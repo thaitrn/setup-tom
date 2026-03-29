@@ -8,7 +8,7 @@ One-shot setup script for OpenClaw AI with GLM 5 Turbo on Mac Mini.
 |-----------|---------|
 | Hardware | Mac Mini M2/M4 (Apple Silicon) |
 | RAM | 8 GB (16 GB recommended) |
-| Disk | 10 GB free (256 GB SSD sufficient) |
+| Disk | 10 GB free |
 | OS | macOS latest |
 | Network | Internet connection |
 | Accessory | HDMI dummy plug (for 24/7 operation) |
@@ -31,7 +31,7 @@ chmod +x setup-openclaw.sh
 | 1 | Install Homebrew |
 | 2 | Install Node.js 24 |
 | 3 | Install OpenClaw AI |
-| 4 | Configure cloud API key (GLM 5 Turbo - required) |
+| 4 | Configure cloud API key (GLM 5 Turbo) |
 | 5 | Run onboarding + install daemon |
 | 6 | Configure GLM 5 Turbo model |
 | 7 | Setup notifications (Telegram / Discord / Both) |
@@ -42,8 +42,6 @@ chmod +x setup-openclaw.sh
 | 12 | Print summary + send completion notification |
 
 ## Notifications
-
-Script supports push notifications via:
 
 | Channel | What You Need |
 |---------|---------------|
@@ -59,7 +57,7 @@ Alerts sent when: setup complete, gateway down (if monitoring added), tasks fini
 2. Enable **FileVault** (System Settings > Privacy & Security)
 3. Plug in **HDMI dummy plug**
 4. Open dashboard: `openclaw dashboard`
-5. Send test message to verify
+5. Send test message to verify GLM 5 Turbo works
 
 ## Useful Commands
 
@@ -70,6 +68,23 @@ openclaw logs             # View logs
 openclaw doctor --fix     # Auto-fix issues
 openclaw gateway restart  # Restart gateway
 ```
+
+## Best Practices
+
+- Use **Zhipu AI** as provider (recommended)
+- Always run `openclaw doctor --fix` after setup
+- Setup notification channel to know when gateway goes down
+- Use HDMI dummy plug + Amphetamine for reliable 24/7 operation
+- Enable FileVault to encrypt disk (API key stored locally)
+- Never expose port 18789 to the internet — keep firewall on
+- Monitor API usage on Zhipu/Haimaker dashboard to control costs
+
+## Security Notes
+
+- API key stored in `~/.openclaw/model-config.json` (plaintext) — enable FileVault
+- Notification tokens in `~/.openclaw/notify-config.json` — keep private
+- Firewall enabled by default — do not port-forward 18789
+- Never commit `~/.openclaw/` config files to git
 
 ## Troubleshooting
 
