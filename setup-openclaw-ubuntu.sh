@@ -69,7 +69,7 @@ else
 fi
 
 # --- Check Internet ---
-if curl -s --max-time 5 https://install.openclaw.ai >/dev/null 2>&1; then
+if curl -s --max-time 5 https://google.com >/dev/null 2>&1; then
   ok "Internet connection OK"
 else
   bad "No internet connection. Cannot download packages."
@@ -123,12 +123,29 @@ step 3 "Installing OpenClaw AI..."
 bash <(curl -sL https://install.openclaw.ai/linux.sh)
 
 # Ensure openclaw is in PATH
+# The installer may have updated shell profile — source it to pick up PATH changes
+SHELL_RC="$HOME/.bashrc"
+[[ -f "$HOME/.zshrc" ]] && SHELL_RC="$HOME/.zshrc"
+# shellcheck disable=SC1090
+source "$SHELL_RC" 2>/dev/null || true
+
 if ! command -v openclaw &>/dev/null; then
-  NPM_BIN="$(npm config get prefix)/bin"
-  SHELL_RC="$HOME/.bashrc"
-  [[ -f "$HOME/.zshrc" ]] && SHELL_RC="$HOME/.zshrc"
-  echo "export PATH=\"$NPM_BIN:\$PATH\"" >> "$SHELL_RC"
-  export PATH="$NPM_BIN:$PATH"
+  # Search common install locations
+  for SEARCH_DIR in \
+    "$(npm config get prefix 2>/dev/null)/bin" \
+    "$HOME/.local/bin" \
+    "/usr/local/bin" \
+    "$HOME/.openclaw/bin"; do
+    if [[ -x "$SEARCH_DIR/openclaw" ]]; then
+      export PATH="$SEARCH_DIR:$PATH"
+      echo "export PATH=\"$SEARCH_DIR:\$PATH\"" >> "$SHELL_RC"
+      break
+    fi
+  done
+fi
+
+if ! command -v openclaw &>/dev/null; then
+  fail "openclaw not found after installation. Check installer output above and add its location to PATH manually."
 fi
 openclaw --version
 
