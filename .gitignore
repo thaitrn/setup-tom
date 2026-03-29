@@ -70,6 +70,9 @@ __pycache__
 prompt.md
 ck.md
 
+# Claude Code config (local only)
+.claude/
+
 # Agent memory (project scope)
 .claude/agent-memory/
 
