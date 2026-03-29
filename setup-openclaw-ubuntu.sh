@@ -64,22 +64,6 @@ run_with_progress() {
   rm -f "$LOG_FILE"
 }
 
-# Download with retry and progress
-# Usage: download_with_retry URL MAX_RETRIES
-download_with_retry() {
-  local URL="$1" MAX_RETRIES="${2:-3}" RETRY=0
-  while [[ "$RETRY" -lt "$MAX_RETRIES" ]]; do
-    RETRY=$((RETRY + 1))
-    echo -e "  Attempt $RETRY/$MAX_RETRIES: downloading from $URL"
-    if curl -fSL --retry 2 --retry-delay 3 --max-time 120 --progress-bar "$URL" 2>&1; then
-      return 0
-    fi
-    warn "Download attempt $RETRY failed."
-    [[ "$RETRY" -lt "$MAX_RETRIES" ]] && echo "  Retrying in 5s..." && sleep 5
-  done
-  return 1
-}
-
 # ============================================
 # STEP 0: PRE-FLIGHT CHECK
 # ============================================
@@ -178,42 +162,21 @@ node -v
 
 # --- Step 3: Install OpenClaw ---
 step 3 "Installing OpenClaw AI..."
-INSTALLER_SCRIPT=$(mktemp)
-if ! download_with_retry "https://install.openclaw.ai/linux.sh" 3 > "$INSTALLER_SCRIPT"; then
-  rm -f "$INSTALLER_SCRIPT"
-  fail "Failed to download OpenClaw installer after 3 attempts. Check your internet or try again later."
+if command -v openclaw &>/dev/null; then
+  echo "OpenClaw $(openclaw --version 2>/dev/null || echo '?') already installed."
+else
+  run_with_progress "Installing openclaw via npm" "~30s" npm install -g openclaw
 fi
-# Run installer with live output so user can see what's happening
-echo -e "  ${YELLOW}Running installer (output below)...${NC}"
-echo "  ──────────────────────────────────"
-if ! bash "$INSTALLER_SCRIPT"; then
-  rm -f "$INSTALLER_SCRIPT"
-  fail "OpenClaw installer failed. Check output above."
-fi
-echo "  ──────────────────────────────────"
-ok "OpenClaw installer finished"
-rm -f "$INSTALLER_SCRIPT"
 
-# Ensure openclaw is in PATH
-# The installer may have updated shell profile — source it to pick up PATH changes
-SHELL_RC="$HOME/.bashrc"
-[[ -f "$HOME/.zshrc" ]] && SHELL_RC="$HOME/.zshrc"
-# shellcheck disable=SC1090
-source "$SHELL_RC" 2>/dev/null || true
-
+# Ensure openclaw is in PATH (npm global bin may not be in PATH)
 if ! command -v openclaw &>/dev/null; then
-  # Search common install locations
-  for SEARCH_DIR in \
-    "$(npm config get prefix 2>/dev/null)/bin" \
-    "$HOME/.local/bin" \
-    "/usr/local/bin" \
-    "$HOME/.openclaw/bin"; do
-    if [[ -x "$SEARCH_DIR/openclaw" ]]; then
-      export PATH="$SEARCH_DIR:$PATH"
-      echo "export PATH=\"$SEARCH_DIR:\$PATH\"" >> "$SHELL_RC"
-      break
-    fi
-  done
+  NPM_BIN="$(npm config get prefix 2>/dev/null)/bin"
+  if [[ -x "$NPM_BIN/openclaw" ]]; then
+    export PATH="$NPM_BIN:$PATH"
+    SHELL_RC="$HOME/.bashrc"
+    [[ -f "$HOME/.zshrc" ]] && SHELL_RC="$HOME/.zshrc"
+    echo "export PATH=\"$NPM_BIN:\$PATH\"" >> "$SHELL_RC"
+  fi
 fi
 
 if ! command -v openclaw &>/dev/null; then
