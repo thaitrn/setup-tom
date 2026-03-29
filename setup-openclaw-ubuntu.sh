@@ -183,7 +183,15 @@ if ! download_with_retry "https://install.openclaw.ai/linux.sh" 3 > "$INSTALLER_
   rm -f "$INSTALLER_SCRIPT"
   fail "Failed to download OpenClaw installer after 3 attempts. Check your internet or try again later."
 fi
-run_with_progress "Running OpenClaw installer" "~120s" bash "$INSTALLER_SCRIPT"
+# Run installer with live output so user can see what's happening
+echo -e "  ${YELLOW}Running installer (output below)...${NC}"
+echo "  ──────────────────────────────────"
+if ! bash "$INSTALLER_SCRIPT"; then
+  rm -f "$INSTALLER_SCRIPT"
+  fail "OpenClaw installer failed. Check output above."
+fi
+echo "  ──────────────────────────────────"
+ok "OpenClaw installer finished"
 rm -f "$INSTALLER_SCRIPT"
 
 # Ensure openclaw is in PATH
