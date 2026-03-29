@@ -86,6 +86,66 @@ openclaw gateway restart  # Restart gateway
 - Firewall enabled by default — do not port-forward 18789
 - Never commit `~/.openclaw/` config files to git
 
+## Usage Scenarios
+
+### Scenario: Gold Price Tracker via Telegram
+
+After setup, you chat with Tôm (the bot) on Telegram just like texting a friend.
+
+**You:**
+> Tôm ơi, anh cần cập nhật giá vàng 1 tiếng 1 lần
+
+**Tôm (auto-reply):**
+> Dạ anh, em sẽ cập nhật giá vàng mỗi 1 tiếng cho anh. Bắt đầu ngay nhé!
+
+**What happens behind the scenes:**
+
+```
+1. Telegram Bot receives message
+2. OpenClaw Gateway (port 18789) processes the request
+3. GLM 5 Turbo understands intent → creates a scheduled task
+4. Every 1 hour:
+   ├── Fetch gold price from API (SJC, DOJI, PNJ...)
+   ├── Format: price, change %, trend
+   └── Send result back via Telegram Bot
+```
+
+**Tôm sends every hour:**
+> Giá vàng 10:00 29/03/2026
+> - SJC: 92.5 / 94.0 triệu (mua/bán)
+> - DOJI: 92.3 / 93.8 triệu
+> - Thế giới: $2,235/oz
+> - Xu hướng: tăng +0.3% so với 1h trước
+
+**More examples you can ask:**
+
+| You say | Tôm does |
+|---------|----------|
+| "Nhắc anh uống nước mỗi 2 tiếng" | Scheduled reminder every 2h |
+| "Tóm tắt tin tức công nghệ mỗi sáng 7h" | Daily tech news digest at 7 AM |
+| "Theo dõi giá Bitcoin, báo khi vượt 70k USD" | Price alert with threshold |
+| "Dịch file này sang tiếng Anh" | One-time translation task |
+| "Tổng hợp chi tiêu tháng này" | Summarize expenses from chat history |
+
+### How It Works (Architecture)
+
+```
+┌──────────────┐    message     ┌──────────────────┐
+│  Telegram /  │ ─────────────► │  OpenClaw Gateway │
+│  Discord     │                │  (port 18789)     │
+│  (you chat)  │ ◄───────────── │  Mac Mini 24/7    │
+└──────────────┘    response    └────────┬─────────┘
+                                         │
+                                         ▼
+                                ┌──────────────────┐
+                                │  GLM 5 Turbo      │
+                                │  (Cloud API)      │
+                                │  - Understand VN  │
+                                │  - Schedule tasks │
+                                │  - Fetch data     │
+                                └──────────────────┘
+```
+
 ## Troubleshooting
 
 | Issue | Fix |
