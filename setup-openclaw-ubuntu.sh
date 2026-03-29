@@ -22,6 +22,64 @@ fail() { echo -e "${RED}[FAIL]${NC} $1"; exit 1; }
 ok()   { echo -e "  ${GREEN}✓${NC} $1"; }
 bad()  { echo -e "  ${RED}✗${NC} $1"; PREFLIGHT_FAIL=1; }
 
+# Progress spinner for long-running commands
+# Usage: run_with_progress "Description" "est. time" command [args...]
+run_with_progress() {
+  local DESC="$1" EST="$2"
+  shift 2
+  local SPINNER='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+  local START_TIME=$SECONDS
+  local LOG_FILE
+  LOG_FILE=$(mktemp)
+
+  # Run command in background, capture output
+  "$@" > "$LOG_FILE" 2>&1 &
+  local PID=$!
+
+  # Animate spinner with elapsed/estimated time
+  local i=0
+  while kill -0 "$PID" 2>/dev/null; do
+    local ELAPSED=$(( SECONDS - START_TIME ))
+    printf "\r  ${YELLOW}%s${NC} %s [%ds / %s]  " "${SPINNER:i%${#SPINNER}:1}" "$DESC" "$ELAPSED" "$EST"
+    i=$((i + 1))
+    sleep 0.15
+  done
+
+  # Get exit code
+  wait "$PID"
+  local EXIT_CODE=$?
+  local ELAPSED=$(( SECONDS - START_TIME ))
+
+  # Clear spinner line and print result
+  printf "\r%-80s\r" ""
+  if [[ "$EXIT_CODE" -eq 0 ]]; then
+    ok "$DESC (${ELAPSED}s)"
+  else
+    echo -e "  ${RED}✗${NC} $DESC (failed after ${ELAPSED}s)"
+    echo -e "  ${RED}--- Error output ---${NC}"
+    tail -20 "$LOG_FILE"
+    rm -f "$LOG_FILE"
+    return "$EXIT_CODE"
+  fi
+  rm -f "$LOG_FILE"
+}
+
+# Download with retry and progress
+# Usage: download_with_retry URL MAX_RETRIES
+download_with_retry() {
+  local URL="$1" MAX_RETRIES="${2:-3}" RETRY=0
+  while [[ "$RETRY" -lt "$MAX_RETRIES" ]]; do
+    RETRY=$((RETRY + 1))
+    echo -e "  Attempt $RETRY/$MAX_RETRIES: downloading from $URL"
+    if curl -fSL --retry 2 --retry-delay 3 --max-time 120 --progress-bar "$URL" 2>&1; then
+      return 0
+    fi
+    warn "Download attempt $RETRY failed."
+    [[ "$RETRY" -lt "$MAX_RETRIES" ]] && echo "  Retrying in 5s..." && sleep 5
+  done
+  return 1
+}
+
 # ============================================
 # STEP 0: PRE-FLIGHT CHECK
 # ============================================
@@ -101,8 +159,8 @@ fi
 
 # --- Step 1: Update system & install dependencies ---
 step 1 "Updating system and installing dependencies..."
-sudo apt update -y
-sudo apt install -y curl wget git build-essential ca-certificates gnupg
+run_with_progress "Updating package lists" "~30s" sudo apt update -y
+run_with_progress "Installing dependencies" "~60s" sudo apt install -y curl wget git build-essential ca-certificates gnupg
 
 # --- Step 2: Install Node.js 24 ---
 step 2 "Installing Node.js 24..."
@@ -111,8 +169,8 @@ if ! command -v node &>/dev/null || [[ "$(node -v | cut -d. -f1 | tr -d v)" -lt 
   sudo mkdir -p /etc/apt/keyrings
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
   echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-  sudo apt update -y
-  sudo apt install -y nodejs
+  run_with_progress "Updating package lists" "~15s" sudo apt update -y
+  run_with_progress "Installing Node.js" "~30s" sudo apt install -y nodejs
 else
   echo "Node.js $(node -v) already installed."
 fi
@@ -120,7 +178,13 @@ node -v
 
 # --- Step 3: Install OpenClaw ---
 step 3 "Installing OpenClaw AI..."
-bash <(curl -sL https://install.openclaw.ai/linux.sh)
+INSTALLER_SCRIPT=$(mktemp)
+if ! download_with_retry "https://install.openclaw.ai/linux.sh" 3 > "$INSTALLER_SCRIPT"; then
+  rm -f "$INSTALLER_SCRIPT"
+  fail "Failed to download OpenClaw installer after 3 attempts. Check your internet or try again later."
+fi
+run_with_progress "Running OpenClaw installer" "~120s" bash "$INSTALLER_SCRIPT"
+rm -f "$INSTALLER_SCRIPT"
 
 # Ensure openclaw is in PATH
 # The installer may have updated shell profile — source it to pick up PATH changes
@@ -325,7 +389,7 @@ echo "Sleep/suspend disabled for 24/7 operation."
 # --- Step 9: Enable Firewall ---
 step 9 "Enabling firewall (ufw)..."
 if ! command -v ufw &>/dev/null; then
-  sudo apt install -y ufw
+  run_with_progress "Installing ufw" "~15s" sudo apt install -y ufw
 fi
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
