@@ -1,8 +1,10 @@
-# Setup Tom - OpenClaw AI on Mac Mini
+# Setup Tom - OpenClaw AI
 
-One-shot setup script for OpenClaw AI with GLM 5 Turbo on Mac Mini.
+One-shot setup script for OpenClaw AI with GLM 5 Turbo on Mac Mini or Ubuntu.
 
 ## Requirements
+
+### macOS (Mac Mini)
 
 | Component | Minimum |
 |-----------|---------|
@@ -14,7 +16,20 @@ One-shot setup script for OpenClaw AI with GLM 5 Turbo on Mac Mini.
 | Accessory | HDMI dummy plug (for 24/7 operation) |
 | API Key | Zhipu AI or Haimaker account |
 
+### Ubuntu / Debian
+
+| Component | Minimum |
+|-----------|---------|
+| Hardware | x86_64 or aarch64 |
+| RAM | 4 GB (8 GB recommended) |
+| Disk | 10 GB free |
+| OS | Ubuntu 22.04+ / Debian 12+ |
+| Network | Internet connection |
+| API Key | Zhipu AI or Haimaker account |
+
 ## Quick Start
+
+### macOS
 
 ```bash
 git clone https://github.com/thaitrn/setup-tom.git
@@ -23,7 +38,18 @@ chmod +x setup-openclaw.sh
 ./setup-openclaw.sh
 ```
 
+### Ubuntu / Debian
+
+```bash
+git clone https://github.com/thaitrn/setup-tom.git
+cd setup-tom
+chmod +x setup-openclaw-ubuntu.sh
+./setup-openclaw-ubuntu.sh
+```
+
 ## What the Script Does
+
+### macOS
 
 | Step | Action |
 |------|--------|
@@ -41,6 +67,24 @@ chmod +x setup-openclaw.sh
 | 11 | Health check + auto-fix |
 | 12 | Print summary + send completion notification |
 
+### Ubuntu
+
+| Step | Action |
+|------|--------|
+| 0 | Pre-flight check (distro, arch, RAM, disk, internet) |
+| 1 | Update system & install dependencies (apt) |
+| 2 | Install Node.js 24 (NodeSource) |
+| 3 | Install OpenClaw AI |
+| 4 | Configure cloud API key (GLM 5 Turbo) |
+| 5 | Run onboarding + install daemon |
+| 6 | Configure GLM 5 Turbo model |
+| 7 | Setup notifications (Telegram / Discord / Both) |
+| 8 | Disable sleep/suspend (systemd mask) |
+| 9 | Enable firewall (ufw) |
+| 10 | Start gateway (port 18789) |
+| 11 | Health check + auto-fix |
+| 12 | Print summary + send completion notification |
+
 ## Notifications
 
 | Channel | What You Need |
@@ -53,11 +97,19 @@ Alerts sent when: setup complete, gateway down (if monitoring added), tasks fini
 
 ## Post-Setup (Manual)
 
+### macOS
+
 1. Install **Amphetamine** from App Store (prevent sleep)
 2. Enable **FileVault** (System Settings > Privacy & Security)
 3. Plug in **HDMI dummy plug**
 4. Open dashboard: `openclaw dashboard`
 5. Send test message to verify GLM 5 Turbo works
+
+### Ubuntu
+
+1. Enable **LUKS full-disk encryption** if not already configured
+2. Open dashboard: `openclaw dashboard`
+3. Send test message to verify GLM 5 Turbo works
 
 ## Useful Commands
 
@@ -148,6 +200,8 @@ After setup, you chat with Tôm (the bot) on Telegram just like texting a friend
 
 ## Troubleshooting
 
+### macOS
+
 | Issue | Fix |
 |-------|-----|
 | `command not found: openclaw` | `source ~/.zshrc` or restart terminal |
@@ -155,6 +209,17 @@ After setup, you chat with Tôm (the bot) on Telegram just like texting a friend
 | Sleep kills gateway | Check HDMI dummy plug + pmset settings |
 | `bad file descriptor` errors | `openclaw gateway restart` |
 | Node version wrong | `brew install node@24 && brew link --overwrite node@24` |
+
+### Ubuntu
+
+| Issue | Fix |
+|-------|-----|
+| `command not found: openclaw` | `source ~/.bashrc` or restart terminal |
+| Gateway not starting | `openclaw doctor --fix` |
+| Suspend kills gateway | `sudo systemctl mask sleep.target suspend.target` |
+| `bad file descriptor` errors | `openclaw gateway restart` |
+| Node version wrong | Reinstall via NodeSource: see script step 2 |
+| ufw blocking connections | `sudo ufw status` to check rules |
 
 ## Cost Estimate
 
