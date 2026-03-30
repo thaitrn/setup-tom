@@ -63,9 +63,15 @@ else
 fi
 
 # --- Check Internet ---
-if curl -s --max-time 5 https://install.openclaw.ai >/dev/null 2>&1; then
-  ok "Internet connection OK"
-else
+INTERNET_OK=0
+for endpoint in "https://github.com" "https://google.com" "https://cloudflare.com"; do
+  if curl -s --max-time 5 "$endpoint" >/dev/null 2>&1; then
+    ok "Internet connection OK (via $endpoint)"
+    INTERNET_OK=1
+    break
+  fi
+done
+if [[ "$INTERNET_OK" -eq 0 ]]; then
   bad "No internet connection. Cannot download packages."
 fi
 
@@ -115,7 +121,7 @@ node -v
 
 # --- Step 3: Install OpenClaw ---
 step 3 "Installing OpenClaw AI..."
-bash <(curl -sL https://install.openclaw.ai/macos.sh)
+npm install -g openclaw
 
 # Ensure openclaw is in PATH
 if ! command -v openclaw &>/dev/null; then
@@ -123,7 +129,13 @@ if ! command -v openclaw &>/dev/null; then
   echo "export PATH=\"$NPM_BIN:\$PATH\"" >> ~/.zshrc
   export PATH="$NPM_BIN:$PATH"
 fi
-openclaw --version
+
+# Verify installation
+if command -v openclaw &>/dev/null; then
+  ok "OpenClaw installed: $(openclaw --version)"
+else
+  fail "OpenClaw installation failed. Try: npm install -g openclaw"
+fi
 
 # --- Step 4: API Key Input (Cloud mode - GLM 5 Turbo only) ---
 step 4 "Configuring cloud API key..."
